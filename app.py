@@ -3,7 +3,7 @@ import streamlit as st
 import streamlit.components.v1 as components
 
 st.set_page_config(
-    page_title="THE LAST WARD",
+    page_title="ABANDONED HOSPITAL",
     page_icon="👻",
     layout="wide"
 )
@@ -11,26 +11,29 @@ st.set_page_config(
 st.markdown("""
 <style>
 .stApp {
-    background: #050507;
+    background: #08080d;
     color: white;
 }
 header, footer, #MainMenu {
     visibility: hidden;
 }
 .block-container {
+    max-width: 1200px;
     padding: 1rem;
-    max-width: 1400px;
 }
 </style>
 """, unsafe_allow_html=True)
 
 st.markdown("""
-<h1 style="text-align:center;color:#b90020;
-letter-spacing:8px;text-shadow:0 0 20px red">
-THE LAST WARD
+<h1 style="
+text-align:center;
+color:#d00027;
+letter-spacing:5px;
+text-shadow:0 0 20px red;">
+👻 ABANDONED HOSPITAL
 </h1>
-<p style="text-align:center;color:#aaa">
-마지막 병동 · HORROR SURVIVAL
+<p style="text-align:center;color:#aaa;">
+버려진 병원에서 살아남으세요.
 </p>
 """, unsafe_allow_html=True)
 
@@ -38,472 +41,650 @@ game = r"""
 <!DOCTYPE html>
 <html>
 <head>
+<meta charset="UTF-8">
 <style>
 * {box-sizing:border-box}
 body {
- margin:0;
- background:#050507;
- color:white;
- font-family:Arial;
- overflow:hidden;
+    margin:0;
+    background:#08080d;
+    color:white;
+    font-family:Arial,sans-serif;
 }
-#wrap {
- position:relative;
- width:100%;
- height:620px;
- background:#000;
- overflow:hidden;
- border:1px solid #79101b;
+#game {
+    position:relative;
+    width:100%;
+    max-width:900px;
+    margin:auto;
 }
 canvas {
- width:100%;
- height:100%;
- display:block;
- cursor:crosshair;
+    display:block;
+    width:100%;
+    background:#09090d;
+    border:2px solid #65111b;
+    cursor:crosshair;
+    outline:none;
+    touch-action:none;
 }
 #hud {
- position:absolute;
- inset:0;
- pointer-events:none;
- padding:15px;
-}
-#top {
- display:flex;
- justify-content:space-between;
- font-size:13px;
+    display:flex;
+    justify-content:space-between;
+    gap:8px;
+    padding:10px;
+    background:#160b12;
+    font-size:13px;
+    flex-wrap:wrap;
 }
 .stat {
- background:#000b;
- border:1px solid #722;
- padding:10px;
-}
-#message {
- position:absolute;
- bottom:25px;
- left:50%;
- transform:translateX(-50%);
- background:#000c;
- padding:12px 20px;
- text-align:center;
+    padding:8px;
+    border:1px solid #55202a;
 }
 #overlay {
- position:absolute;
- inset:0;
- background:#050507ee;
- display:flex;
- align-items:center;
- justify-content:center;
- text-align:center;
- z-index:5;
+    position:absolute;
+    inset:0;
+    background:#000e;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    z-index:5;
+    padding:15px;
 }
 .panel {
- max-width:500px;
- padding:20px;
+    max-width:450px;
 }
 .panel h1 {
- color:#d00027;
- letter-spacing:5px;
- text-shadow:0 0 20px red;
+    color:#e00030;
+    text-shadow:0 0 20px red;
+    letter-spacing:4px;
 }
 button {
- background:#570011;
- color:white;
- border:1px solid red;
- padding:15px 30px;
- font-size:18px;
- cursor:pointer;
+    padding:14px 28px;
+    color:white;
+    background:#650018;
+    border:1px solid #ff304c;
+    font-size:17px;
+    cursor:pointer;
 }
-#scare {
- display:none;
- position:absolute;
- inset:0;
- z-index:4;
- align-items:center;
- justify-content:center;
- font-size:150px;
- background:#6005;
- text-shadow:0 0 30px red;
+button:hover {
+    background:#a00025;
+    box-shadow:0 0 20px red;
+}
+#message {
+    text-align:center;
+    color:#ff6666;
+    min-height:25px;
+    padding:8px;
+}
+#help {
+    text-align:center;
+    color:#999;
+    font-size:12px;
+    padding:10px;
+    line-height:2;
 }
 </style>
 </head>
+
 <body>
 
-<div id="wrap">
-<canvas id="screen"></canvas>
+<div id="game">
 
 <div id="hud">
- <div id="top">
-  <div class="stat">
-   ❤️ 체력 <span id="health">100</span>%
-  </div>
-  <div class="stat">
-   🔦 배터리 <span id="battery">100</span>%
-  </div>
-  <div class="stat" id="objective">열쇠 찾기</div>
- </div>
- <div id="message">주변을 살펴보세요...</div>
+    <div class="stat">❤️ 체력: <span id="hp">100</span>%</div>
+    <div class="stat">🔦 배터리: <span id="battery">100</span>%</div>
+    <div class="stat">🔑 열쇠: <span id="keyStatus">없음</span></div>
+    <div class="stat">👹 괴물: <span id="monsterStatus">대기 중</span></div>
 </div>
 
-<div id="scare">👹</div>
+<canvas id="canvas" width="900" height="620"
+tabindex="0"></canvas>
+
+<div id="message">병원에서 탈출하세요...</div>
 
 <div id="overlay">
- <div class="panel">
-  <h1>THE LAST WARD</h1>
-  <h2>마지막 병동</h2>
-  <p>
-   새벽 3시 17분.<br>
-   당신은 버려진 병원에서 깨어났다.<br>
-   출구는 잠겨 있고 누군가 당신을 지켜보고 있다.
-  </p>
-  <p style="color:#ff4444">
-   ⚠️ 어둠 속에 오래 머물지 마세요.
-  </p>
-  <button id="start">게임 시작</button>
- </div>
+    <div class="panel">
+        <h1>ABANDONED HOSPITAL</h1>
+        <h3>버려진 병원</h3>
+        <p>
+            당신은 폐병원에 갇혔습니다.<br>
+            병원 어딘가에 출구 열쇠가 있습니다.<br>
+            하지만 이곳에는 당신 외에 다른 존재가 있습니다.
+        </p>
+        <p style="color:#ff5555">
+            괴물을 조심하세요.
+        </p>
+        <button id="start">게임 시작</button>
+    </div>
 </div>
+
+</div>
+
+<div id="help">
+    W : 위로 이동　 A : 왼쪽 이동<br>
+    S : 아래로 이동　 D : 오른쪽 이동<br>
+    SHIFT : 달리기　 F : 손전등 켜기/끄기<br>
+    E : 주변 물건 조사하기<br>
+    게임 화면을 한 번 클릭한 후 키보드를 사용하세요.
 </div>
 
 <script>
-const canvas=document.getElementById("screen");
+const canvas=document.getElementById("canvas");
 const ctx=canvas.getContext("2d");
-const wrap=document.getElementById("wrap");
 
-let W=800,H=620;
-
-function resize(){
- W=wrap.clientWidth;
- H=wrap.clientHeight;
- canvas.width=W;
- canvas.height=H;
-}
-resize();
-window.addEventListener("resize",resize);
+const TILE=60;
+const COLS=15;
+const ROWS=10;
 
 const map=[
-"############",
-"#..........#",
-"#.##..#....#",
-"#......#...#",
-"#.##...#...#",
-"#......#...#",
-"###.##.....#",
-"#..........#",
-"#.####..##.#",
-"#..........#",
-"#..........#",
-"############"
+"###############",
+"#.............#",
+"#..##.........#",
+"#..##..###....#",
+"#......#......#",
+"#.####.#.##...#",
+"#......#......#",
+"#..###........#",
+"#.............#",
+"###############"
 ];
 
-let p={
- x:1.5,y:1.5,angle:0,
- health:100,battery:100,
- flashlight:true,hasKey:false
+let player={
+    x:1.5*TILE,
+    y:1.5*TILE,
+    size:23,
+    hp:100,
+    battery:100,
+    flashlight:true,
+    hasKey:false
 };
-
-let key={x:9.5,y:9.5,found:false};
-let door={x:6.5,y:10.5};
 
 let monster={
- x:9.5,y:2.5,active:false
+    x:12.5*TILE,
+    y:1.5*TILE,
+    active:false,
+    speed:55
 };
 
-let started=false,dead=false,won=false;
+const key={
+    x:12.5*TILE,
+    y:7.5*TILE,
+    found:false
+};
+
+const exit={
+    x:7.5*TILE,
+    y:8.5*TILE
+};
+
+let started=false;
+let gameOver=false;
+let won=false;
 let last=performance.now();
-let fear=0,shake=0;
+let shake=0;
+let fear=0;
+let flicker=0;
+let messageTimer=0;
+
 const pressed={};
 
-function wall(x,y){
- let a=Math.floor(x),b=Math.floor(y);
- return !map[b]||map[b][a]!=="." ;
+function say(text) {
+    document.getElementById("message").textContent=text;
+    messageTimer=performance.now()+2500;
 }
 
-function dist(x,y,a,b){
- return Math.hypot(x-a,y-b);
+function wallAt(x,y) {
+    const c=Math.floor(x/TILE);
+    const r=Math.floor(y/TILE);
+
+    return r<0 || c<0 ||
+        r>=ROWS || c>=COLS ||
+        map[r][c]==="#";
 }
 
-function say(t){
- document.getElementById("message").textContent=t;
+function distance(a,b,c,d) {
+    return Math.hypot(a-c,b-d);
 }
 
-document.getElementById("start").onclick=()=>{
- started=true;
- document.getElementById("overlay").style.display="none";
- canvas.requestPointerLock?.();
- say("WASD로 이동하고 열쇠를 찾으세요.");
- last=performance.now();
- requestAnimationFrame(loop);
-};
+function collides(x,y) {
+    const s=player.size/2;
+
+    return wallAt(x-s,y-s) ||
+           wallAt(x+s,y-s) ||
+           wallAt(x-s,y+s) ||
+           wallAt(x+s,y+s);
+}
+
+function movePlayer(dx,dy) {
+    if(!collides(player.x+dx,player.y))
+        player.x+=dx;
+
+    if(!collides(player.x,player.y+dy))
+        player.y+=dy;
+}
+
+function startGame() {
+    if(started)return;
+
+    started=true;
+    document.getElementById("overlay").style.display="none";
+    canvas.focus();
+    last=performance.now();
+    say("열쇠를 찾아 출구로 가세요.");
+    requestAnimationFrame(loop);
+}
+
+document.getElementById("start")
+.addEventListener("click",startGame);
 
 canvas.addEventListener("click",()=>{
- if(started&&!dead&&!won)
-  canvas.requestPointerLock?.();
-});
-
-document.addEventListener("mousemove",e=>{
- if(document.pointerLockElement===canvas)
-  p.angle+=e.movementX*.0025;
+    canvas.focus();
 });
 
 document.addEventListener("keydown",e=>{
- pressed[e.code]=true;
+    if(["KeyW","KeyA","KeyS","KeyD",
+        "ArrowUp","ArrowDown","ArrowLeft","ArrowRight",
+        "Space"].includes(e.code)) {
+        e.preventDefault();
+    }
 
- if(e.code==="KeyF"){
-  p.flashlight=!p.flashlight;
-  say(p.flashlight?"손전등 ON":"손전등 OFF");
- }
+    pressed[e.code]=true;
 
- if(e.code==="KeyE") interact();
+    if(!started || gameOver || won)return;
+
+    if(e.repeat)return;
+
+    if(e.code==="KeyF") {
+        player.flashlight=!player.flashlight;
+        say(player.flashlight?
+            "손전등을 켰습니다.":"손전등을 껐습니다.");
+    }
+
+    if(e.code==="KeyE") interact();
 });
 
 document.addEventListener("keyup",e=>{
- pressed[e.code]=false;
+    pressed[e.code]=false;
 });
 
-function move(dx,dy){
- if(!wall(p.x+dx,p.y))p.x+=dx;
- if(!wall(p.x,p.y+dy))p.y+=dy;
+function interact() {
+    if(!key.found &&
+       distance(player.x,player.y,key.x,key.y)<65) {
+
+        key.found=true;
+        player.hasKey=true;
+        monster.active=true;
+        say("열쇠를 획득했다! 괴물이 깨어났다!");
+        shake=10;
+        return;
+    }
+
+    if(distance(player.x,player.y,exit.x,exit.y)<65) {
+        if(player.hasKey) {
+            won=true;
+            ending("ESCAPE SUCCESS",
+            "당신은 병원에서 탈출했습니다. 정말 끝난 것일까요?");
+        } else {
+            say("출구가 잠겨 있다. 열쇠가 필요하다.");
+        }
+        return;
+    }
+
+    say("주변에 조사할 물건이 없습니다.");
 }
 
-function interact(){
- if(!key.found&&dist(p.x,p.y,key.x,key.y)<1.5){
-  key.found=true;
-  p.hasKey=true;
-  monster.active=true;
-  say("열쇠를 획득했다! 무언가 깨어났다!");
-  shake=15;
-  return;
- }
+function ending(title,text) {
+    document.getElementById("overlay").style.display="flex";
 
- if(dist(p.x,p.y,door.x,door.y)<1.5){
-  if(p.hasKey){
-   won=true;
-   ending("탈출 성공","당신은 병원을 탈출했다...");
-  }else{
-   say("문이 잠겨 있다. 열쇠가 필요하다.");
-  }
-  return;
- }
-
- say("아무것도 없다.");
+    document.getElementById("overlay").innerHTML=`
+        <div class="panel">
+            <h1>${title}</h1>
+            <p>${text}</p>
+            <button onclick="location.reload()">다시 시작</button>
+        </div>
+    `;
 }
 
-function ending(title,desc){
- document.exitPointerLock?.();
- let o=document.getElementById("overlay");
- o.style.display="flex";
- o.innerHTML=`
- <div class="panel">
- <h1>${title}</h1>
- <p>${desc}</p>
- <button onclick="location.reload()">다시 시작</button>
- </div>`;
+function drawMap() {
+    for(let r=0;r<ROWS;r++) {
+        for(let c=0;c<COLS;c++) {
+            const x=c*TILE;
+            const y=r*TILE;
+
+            if(map[r][c]==="#") {
+                ctx.fillStyle="#29262b";
+                ctx.fillRect(x,y,TILE,TILE);
+
+                ctx.strokeStyle="#443a40";
+                ctx.strokeRect(x,y,TILE,TILE);
+
+                // 벽의 낡은 얼룩
+                ctx.fillStyle="#38252b";
+                ctx.fillRect(x+8,y+12,4,20);
+            } else {
+                ctx.fillStyle="#17151a";
+                ctx.fillRect(x,y,TILE,TILE);
+
+                ctx.strokeStyle="#242027";
+                ctx.strokeRect(x,y,TILE,TILE);
+
+                // 바닥의 타일
+                ctx.fillStyle="#211c23";
+                ctx.fillRect(x+2,y+2,2,2);
+            }
+        }
+    }
+
+    // 병원 침대
+    drawBed(3*TILE,1*TILE);
+    drawBed(3*TILE,6*TILE);
+    drawBed(9*TILE,5*TILE);
+
+    // 책상
+    ctx.fillStyle="#49332e";
+    ctx.fillRect(10*TILE+8,2*TILE+8,40,35);
 }
 
-function scare(){
- let el=document.getElementById("scare");
- el.style.display="flex";
- shake=25;
- setTimeout(()=>el.style.display="none",700);
+function drawBed(x,y) {
+    ctx.fillStyle="#4d4147";
+    ctx.fillRect(x+7,y+9,44,38);
+
+    ctx.fillStyle="#b2a5a6";
+    ctx.fillRect(x+11,y+13,36,12);
+
+    ctx.fillStyle="#292027";
+    ctx.fillRect(x+8,y+38,5,8);
+    ctx.fillRect(x+46,y+38,5,8);
 }
 
-function updateMonster(dt){
- if(!monster.active)return;
+function drawObjects() {
+    // 열쇠
+    if(!key.found) {
+        ctx.save();
+        ctx.shadowBlur=20;
+        ctx.shadowColor="#ffdd00";
+        ctx.fillStyle="#ffe600";
+        ctx.font="32px Arial";
+        ctx.textAlign="center";
+        ctx.fillText("🔑",key.x,key.y+10);
+        ctx.restore();
+    }
 
- let d=dist(p.x,p.y,monster.x,monster.y);
+    // 출구
+    ctx.fillStyle=player.hasKey?"#276b40":"#6b202b";
+    ctx.fillRect(exit.x-20,exit.y-25,40,50);
 
- if(d>.7){
-  let dx=(p.x-monster.x)/d;
-  let dy=(p.y-monster.y)/d;
-  let speed=.6*dt;
-  if(!wall(monster.x+dx*speed,monster.y))
-   monster.x+=dx*speed;
-  if(!wall(monster.x,monster.y+dy*speed))
-   monster.y+=dy*speed;
- }
-
- fear=d<4?Math.min(100,fear+dt*20):
- Math.max(0,fear-dt*8);
-
- if(d<1.1){
-  p.health-=dt*35;
-  if(Math.random()<dt*2)scare();
- }
-
- if(p.health<=0){
-  dead=true;
-  ending("GAME OVER","괴물에게 붙잡혔다.");
- }
+    ctx.fillStyle="#ddd";
+    ctx.fillRect(exit.x+10,exit.y,5,5);
+    ctx.fillStyle="white";
+    ctx.font="11px Arial";
+    ctx.textAlign="center";
+    ctx.fillText("EXIT",exit.x,exit.y-32);
 }
 
-function render(){
- ctx.fillStyle="#09080d";
- ctx.fillRect(0,0,W,H/2);
+function drawMonster() {
+    if(!monster.active)return;
 
- let floor=ctx.createLinearGradient(0,H/2,0,H);
- floor.addColorStop(0,"#28222b");
- floor.addColorStop(1,"#050507");
- ctx.fillStyle=floor;
- ctx.fillRect(0,H/2,W,H/2);
+    ctx.save();
+    ctx.shadowBlur=25;
+    ctx.shadowColor="red";
+    ctx.fillStyle="#b00017";
 
- const rays=240;
- let z=[];
+    ctx.beginPath();
+    ctx.arc(monster.x,monster.y,20,0,Math.PI*2);
+    ctx.fill();
 
- for(let i=0;i<rays;i++){
-  let camera=(i/rays-.5)*1.15;
-  let angle=p.angle+camera;
-  let dx=Math.cos(angle),dy=Math.sin(angle);
-  let d=0,x,y,hit=false;
+    ctx.fillStyle="white";
+    ctx.beginPath();
+    ctx.arc(monster.x-7,monster.y-5,4,0,Math.PI*2);
+    ctx.arc(monster.x+7,monster.y-5,4,0,Math.PI*2);
+    ctx.fill();
 
-  while(d<15&&!hit){
-   d+=.025;
-   x=p.x+dx*d;
-   y=p.y+dy*d;
-   if(wall(x,y))hit=true;
-  }
+    ctx.fillStyle="black";
+    ctx.fillRect(monster.x-8,monster.y+7,16,4);
 
-  d*=Math.cos(camera);
-  z[i]=d;
-
-  let height=Math.min(H*2,H/(d||.1)*.78);
-  let top=H/2-height/2;
-  let light=p.flashlight?
-   Math.max(.12,1-d/10)*Math.max(.15,1-Math.abs(camera)*1.5):
-   .12;
-
-  let red=Math.floor(45*light);
-  let green=Math.floor(45*light);
-  let blue=Math.floor(53*light);
-
-  ctx.fillStyle=`rgb(${red},${green},${blue})`;
-  ctx.fillRect(i*W/rays,top,W/rays+1,height);
- }
-
- function sprite(x,y,emoji,size,color){
-  let dx=x-p.x,dy=y-p.y;
-  let d=Math.hypot(dx,dy);
-  let a=Math.atan2(dy,dx)-p.angle;
-  while(a>Math.PI)a-=Math.PI*2;
-  while(a< -Math.PI)a+=Math.PI*2;
-  if(Math.abs(a)>.8||d<.1)return;
-
-  let sx=W/2+Math.tan(a)*W*.82;
-  let h=Math.min(H*1.5,H/d*.75*size);
-  let col=Math.floor(sx/W*rays);
-  if(col>=0&&col<rays&&d>z[col]+.1)return;
-
-  ctx.save();
-  ctx.textAlign="center";
-  ctx.font=h+"px serif";
-  ctx.shadowBlur=25;
-  ctx.shadowColor=color;
-  ctx.fillText(emoji,sx,H/2+h*.35);
-  ctx.restore();
- }
-
- if(!key.found)sprite(key.x,key.y,"🔑",.5,"gold");
- sprite(door.x,door.y,"🚪",.7,"red");
-
- if(monster.active)
-  sprite(monster.x,monster.y,"👹",1.2,"red");
-
- // 손전등 조명
- if(p.flashlight){
-  let g=ctx.createRadialGradient(
-   W/2,H/2,20,W/2,H/2,W*.55
-  );
-  g.addColorStop(0,"transparent");
-  g.addColorStop(1,"rgba(0,0,0,.8)");
-  ctx.fillStyle=g;
-  ctx.fillRect(0,0,W,H);
- }else{
-  ctx.fillStyle="rgba(0,0,0,.8)";
-  ctx.fillRect(0,0,W,H);
- }
-
- if(fear>0){
-  ctx.fillStyle=`rgba(130,0,0,${fear/500})`;
-  ctx.fillRect(0,0,W,H);
- }
+    ctx.restore();
 }
 
-function loop(now){
- if(!started||dead||won)return;
+function drawPlayer() {
+    // 그림자
+    ctx.fillStyle="#000";
+    ctx.beginPath();
+    ctx.ellipse(player.x+3,player.y+8,15,9,0,0,Math.PI*2);
+    ctx.fill();
 
- let dt=Math.min((now-last)/1000,.05);
- last=now;
+    // 플레이어
+    ctx.fillStyle="#4c8ed9";
+    ctx.beginPath();
+    ctx.arc(player.x,player.y,player.size/2,0,Math.PI*2);
+    ctx.fill();
 
- let speed=(pressed.ShiftLeft?2.8:1.7)*dt;
- let f=0,s=0;
+    ctx.fillStyle="#f3d3ba";
+    ctx.beginPath();
+    ctx.arc(player.x,player.y-3,7,0,Math.PI*2);
+    ctx.fill();
 
- if(pressed.KeyW)f++;
- if(pressed.KeyS)f--;
- if(pressed.KeyA)s--;
- if(pressed.KeyD)s++;
-
- if(pressed.ArrowLeft)p.angle-=dt*1.8;
- if(pressed.ArrowRight)p.angle+=dt*1.8;
-
- let len=Math.hypot(f,s)||1;
- f/=len;s/=len;
-
- move(
-  (Math.cos(p.angle)*f+
-   Math.cos(p.angle+Math.PI/2)*s)*speed,
-  (Math.sin(p.angle)*f+
-   Math.sin(p.angle+Math.PI/2)*s)*speed
- );
-
- if(p.flashlight){
-  p.battery=Math.max(0,p.battery-dt*.5);
-  if(p.battery===0){
-   p.flashlight=false;
-   say("손전등 배터리가 방전되었다!");
-  }
- }else{
-  p.battery=Math.min(100,p.battery+dt*.1);
- }
-
- updateMonster(dt);
-
- ctx.save();
- if(shake>0){
-  ctx.translate(
-   (Math.random()-.5)*shake,
-   (Math.random()-.5)*shake
-  );
-  shake=Math.max(0,shake-.5);
- }
-
- render();
- ctx.restore();
-
- document.getElementById("health").textContent=
-  Math.floor(p.health);
- document.getElementById("battery").textContent=
-  Math.floor(p.battery);
- document.getElementById("objective").textContent=
-  p.hasKey?"출구로 이동":"열쇠 찾기";
-
- requestAnimationFrame(loop);
+    // 바라보는 방향
+    ctx.strokeStyle="#ffe9a0";
+    ctx.lineWidth=3;
+    ctx.beginPath();
+    ctx.moveTo(player.x,player.y);
+    ctx.lineTo(player.x,player.y-16);
+    ctx.stroke();
 }
 
-// 초기 화면
-ctx.fillStyle="#080609";
-ctx.fillRect(0,0,W,H);
-ctx.fillStyle="#9c1528";
-ctx.textAlign="center";
-ctx.font="bold 24px Arial";
-ctx.fillText("ABANDONED HOSPITAL",W/2,H/2);
+function drawLighting() {
+    const radius=player.flashlight?175:75;
+
+    const gradient=ctx.createRadialGradient(
+        player.x,player.y,15,
+        player.x,player.y,radius
+    );
+
+    gradient.addColorStop(0,"rgba(255,235,180,0.35)");
+    gradient.addColorStop(.45,"rgba(220,210,180,0.13)");
+    gradient.addColorStop(1,"rgba(0,0,0,0)");
+
+    ctx.fillStyle="rgba(0,0,0,.91)";
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+
+    ctx.globalCompositeOperation="destination-out";
+
+    const hole=ctx.createRadialGradient(
+        player.x,player.y,8,
+        player.x,player.y,radius
+    );
+
+    hole.addColorStop(0,"rgba(0,0,0,1)");
+    hole.addColorStop(.65,"rgba(0,0,0,.9)");
+    hole.addColorStop(1,"rgba(0,0,0,0)");
+
+    ctx.fillStyle=hole;
+    ctx.beginPath();
+    ctx.arc(player.x,player.y,radius,0,Math.PI*2);
+    ctx.fill();
+
+    ctx.globalCompositeOperation="source-over";
+
+    if(!player.flashlight) {
+        ctx.fillStyle="rgba(0,0,0,.2)";
+        ctx.fillRect(0,0,canvas.width,canvas.height);
+    }
+
+    if(fear>0) {
+        ctx.fillStyle=`rgba(120,0,0,${fear/450})`;
+        ctx.fillRect(0,0,canvas.width,canvas.height);
+    }
+
+    if(flicker>0) {
+        ctx.fillStyle=`rgba(0,0,0,${flicker})`;
+        ctx.fillRect(0,0,canvas.width,canvas.height);
+    }
+}
+
+function updateMonster(dt) {
+    if(!monster.active)return;
+
+    const d=distance(
+        player.x,player.y,
+        monster.x,monster.y
+    );
+
+    if(d>25) {
+        const dx=(player.x-monster.x)/d;
+        const dy=(player.y-monster.y)/d;
+
+        const speed=monster.speed*dt;
+
+        let nx=monster.x+dx*speed;
+        let ny=monster.y+dy*speed;
+
+        if(!wallAt(nx,monster.y))monster.x=nx;
+        if(!wallAt(monster.x,ny))monster.y=ny;
+    }
+
+    if(d<160) {
+        fear=Math.min(100,fear+dt*25);
+    } else {
+        fear=Math.max(0,fear-dt*10);
+    }
+
+    if(d<27) {
+        player.hp-=dt*35;
+        shake=5;
+
+        if(player.hp<=0) {
+            player.hp=0;
+            gameOver=true;
+            ending("GAME OVER","괴물에게 붙잡혔습니다.");
+        }
+    }
+}
+
+function updateHUD() {
+    document.getElementById("hp").textContent=
+        Math.floor(player.hp);
+
+    document.getElementById("battery").textContent=
+        Math.floor(player.battery);
+
+    document.getElementById("keyStatus").textContent=
+        player.hasKey?"보유":"없음";
+
+    document.getElementById("monsterStatus").textContent=
+        monster.active?"추격 중":"대기 중";
+}
+
+function render() {
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+
+    ctx.save();
+
+    if(shake>0) {
+        ctx.translate(
+            (Math.random()-.5)*shake,
+            (Math.random()-.5)*shake
+        );
+        shake=Math.max(0,shake-.4);
+    }
+
+    drawMap();
+    drawObjects();
+    drawMonster();
+    drawPlayer();
+    drawLighting();
+
+    ctx.restore();
+}
+
+function update(dt) {
+    let speed=(pressed.ShiftLeft||pressed.ShiftRight)?150:95;
+    speed*=dt;
+
+    let dx=0,dy=0;
+
+    if(pressed.KeyW||pressed.ArrowUp)dy--;
+    if(pressed.KeyS||pressed.ArrowDown)dy++;
+    if(pressed.KeyA||pressed.ArrowLeft)dx--;
+    if(pressed.KeyD||pressed.ArrowRight)dx++;
+
+    const len=Math.hypot(dx,dy)||1;
+    dx/=len;
+    dy/=len;
+
+    const oldX=player.x;
+    const oldY=player.y;
+
+    const nx=player.x+dx*speed;
+    const ny=player.y+dy*speed;
+
+    if(!collides(nx,player.y))player.x=nx;
+    if(!collides(player.x,ny))player.y=ny;
+
+    function collides(x,y) {
+        const r=player.size/2-3;
+
+        return wallAt(x-r,y-r)||
+               wallAt(x+r,y-r)||
+               wallAt(x-r,y+r)||
+               wallAt(x+r,y+r);
+    }
+
+    const moving=(oldX!==player.x||oldY!==player.y);
+
+    if(player.flashlight) {
+        player.battery=Math.max(0,player.battery-dt*.55);
+
+        if(player.battery===0) {
+            player.flashlight=false;
+            say("손전등 배터리가 방전되었습니다!");
+        }
+    } else {
+        player.battery=Math.min(100,player.battery+dt*.15);
+    }
+
+    if(moving && (pressed.ShiftLeft||pressed.ShiftRight)) {
+        player.battery=Math.max(0,player.battery-dt*.1);
+    }
+
+    updateMonster(dt);
+
+    if(Math.random()<dt*.6) {
+        flicker=Math.random()*.15;
+    } else {
+        flicker=Math.max(0,flicker-dt);
+    }
+
+    updateHUD();
+
+    if(messageTimer && performance.now()>messageTimer) {
+        say("병원에서 탈출하세요...");
+        messageTimer=0;
+    }
+}
+
+function loop(now) {
+    if(!started||gameOver||won)return;
+
+    const dt=Math.min((now-last)/1000,.05);
+    last=now;
+
+    update(dt);
+    render();
+
+    requestAnimationFrame(loop);
+}
+
+// 최초 게임 화면
+render();
 
 </script>
 </body>
 </html>
 """
 
-components.html(game, height=660, scrolling=False)
+components.html(game, height=760, scrolling=False)
 
-st.markdown("""
-<p style="text-align:center;color:#777">
-WASD 이동 · 마우스 시점 · SHIFT 달리기 · F 손전등 · E 상호작용
-</p>
-""", unsafe_allow_html=True)
+st.caption(
+    "ABANDONED HOSPITAL | WASD 이동 · SHIFT 달리기 · "
+    "F 손전등 · E 조사"
+)
