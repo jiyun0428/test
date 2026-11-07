@@ -397,20 +397,28 @@ def guide_button():
         )
 
 
+
 def brand_top():
     brand = BRANDS[st.session_state.brand]
 
     st.markdown(
         f"""
-        <div style="background:{brand['background']};
-        padding:20px;border-radius:15px;
-        border-bottom:5px solid {brand['color']};">
-        <div style="font-size:30px;font-weight:800;color:{brand['color']}">
-        {brand['emoji']} {brand['name']}
-        </div>
-        <div style="font-size:17px;color:#555;">
-        주문하실 메뉴를 선택해 주세요.
-        </div>
+        <div style="
+            background:{brand['background']};
+            padding:20px;
+            border-radius:15px;
+            border-bottom:5px solid {brand['color']};
+        ">
+            <div style="
+                font-size:30px;
+                font-weight:800;
+                color:{brand['color']};
+            ">
+                {brand['emoji']} {st.session_state.brand}
+            </div>
+            <div style="font-size:17px;color:#555;">
+                주문하실 메뉴를 선택해 주세요.
+            </div>
         </div>
         """,
         unsafe_allow_html=True
