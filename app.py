@@ -1,359 +1,196 @@
 
 import streamlit as st
-import streamlit.components.v1 as components
+import random
 
 st.set_page_config(
-    page_title="환영합니다!",
-    page_icon="🎆",
-    layout="wide"
+    page_title="가위바위보 게임",
+    page_icon="✊",
+    layout="centered"
 )
 
 st.markdown("""
 <style>
 .stApp {
-    background: linear-gradient(135deg,
-        #09001f, #210044, #35005c, #09001f);
-    color: white;
-}
-
-.welcome {
-    text-align: center;
-    padding: 25px 10px;
-}
-
-.welcome h1 {
-    font-size: 55px;
-    font-weight: 900;
     background: linear-gradient(
-        90deg, #fff000, #ff55bb, #00ffff, #fff000
+        135deg, #10002b, #240046, #3c096c
     );
-    background-size: 300%;
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    animation: rainbow 4s linear infinite;
-}
-
-@keyframes rainbow {
-    to { background-position: 300%; }
-}
-
-.welcome p {
-    font-size: 21px;
     color: white;
 }
-
+h1, h2, h3, p {
+    color: white !important;
+}
+.game-title {
+    text-align: center;
+    font-size: 45px;
+    font-weight: 900;
+    color: #ffd700;
+    padding: 25px;
+}
+.subtitle {
+    text-align: center;
+    font-size: 20px;
+    color: #e0b0ff;
+}
+.choice {
+    text-align: center;
+    font-size: 65px;
+}
+.result {
+    text-align: center;
+    font-size: 35px;
+    font-weight: bold;
+    color: #ffd700;
+    padding: 20px;
+}
 div.stButton > button {
-    display: block;
-    margin: auto;
-    width: 260px;
-    height: 70px;
-    border-radius: 50px;
-    border: 2px solid #ffdf00;
-    background: linear-gradient(90deg, #ff006e, #8338ec);
+    width: 100%;
+    height: 110px;
+    border-radius: 20px;
+    border: 2px solid #d8b4fe;
+    background: linear-gradient(135deg,#7b2cbf,#5a189a);
     color: white;
     font-size: 25px;
     font-weight: bold;
-    box-shadow: 0 0 20px #ff00ff;
-    transition: 0.3s;
+    transition: 0.2s;
 }
-
 div.stButton > button:hover {
-    transform: scale(1.1);
-    box-shadow: 0 0 40px #ff00ff;
+    background: linear-gradient(135deg,#c77dff,#9d4edd);
+    border-color: #ffd700;
+    transform: scale(1.05);
     color: white;
 }
 </style>
 """, unsafe_allow_html=True)
 
+if "computer" not in st.session_state:
+    st.session_state.computer = "❔"
+
+if "player" not in st.session_state:
+    st.session_state.player = "❔"
+
+if "result" not in st.session_state:
+    st.session_state.result = "게임을 시작해 보세요!"
+
+if "win" not in st.session_state:
+    st.session_state.win = 0
+    st.session_state.lose = 0
+    st.session_state.draw = 0
+
 st.markdown("""
-<div class="welcome">
-    <h1>✨ WELCOME TO OUR WORLD ✨</h1>
-    <p>여러분을 진심으로 환영합니다!</p>
-    <p>🎊 오늘의 특별한 축제를 시작해 보세요! 🎊</p>
+<div class="game-title">
+    ✊ 가위바위보 게임 ✌️
+</div>
+<div class="subtitle">
+    컴퓨터와 대결해 보세요!
 </div>
 """, unsafe_allow_html=True)
 
-if "entered" not in st.session_state:
-    st.session_state.entered = False
+st.write("")
 
-if st.button("🎆 들어가기 🎆"):
-    st.session_state.entered = True
-    st.balloons()
+# 점수판
+c1, c2, c3 = st.columns(3)
 
-if st.session_state.entered:
+c1.metric("🏆 승리", st.session_state.win)
+c2.metric("😢 패배", st.session_state.lose)
+c3.metric("🤝 무승부", st.session_state.draw)
 
-    st.markdown("""
-    <div class="welcome">
-        <h1>🎉 환영합니다!!! 🎉</h1>
-        <p>여러분의 방문을 진심으로 환영합니다 ❤️</p>
-        <p>🖱️ 화면을 클릭해 보세요! 폭죽이 터집니다!</p>
-    </div>
-    """, unsafe_allow_html=True)
+st.divider()
 
-    components.html("""
-    <canvas id="sky"></canvas>
+# 대결 화면
+left, right = st.columns(2)
 
-    <style>
-    html, body {
-        margin: 0;
-        padding: 0;
-        overflow: hidden;
-        background: transparent;
-    }
+with left:
+    st.markdown(
+        "<div class='choice'>🤖</div>",
+        unsafe_allow_html=True
+    )
+    st.markdown(
+        "<h3 style='text-align:center'>컴퓨터</h3>",
+        unsafe_allow_html=True
+    )
+    st.markdown(
+        f"<div class='choice'>{st.session_state.computer}</div>",
+        unsafe_allow_html=True
+    )
 
-    #sky {
-        display: block;
-        width: 100%;
-        height: 720px;
-        cursor: crosshair;
-        background: radial-gradient(
-            ellipse at center,
-            rgba(65, 0, 100, 0.18),
-            rgba(5, 0, 25, 0.12)
-        );
-    }
-    </style>
+with right:
+    st.markdown(
+        "<div class='choice'>😎</div>",
+        unsafe_allow_html=True
+    )
+    st.markdown(
+        "<h3 style='text-align:center'>나</h3>",
+        unsafe_allow_html=True
+    )
+    st.markdown(
+        f"<div class='choice'>{st.session_state.player}</div>",
+        unsafe_allow_html=True
+    )
 
-    <script>
-    const canvas = document.getElementById("sky");
-    const ctx = canvas.getContext("2d");
+st.write("")
 
-    let W, H;
-    let particles = [];
-    let rockets = [];
-    let stars = [];
+st.markdown(
+    "<h3 style='text-align:center'>👇 무엇을 내시겠습니까?</h3>",
+    unsafe_allow_html=True
+)
 
-    function resize() {
-        const dpr = Math.min(window.devicePixelRatio || 1, 2);
-        W = canvas.clientWidth;
-        H = canvas.clientHeight;
+# 가위바위보 버튼
+col1, col2, col3 = st.columns(3)
 
-        canvas.width = W * dpr;
-        canvas.height = H * dpr;
-        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    }
+choices = {
+    "가위": "✌️",
+    "바위": "✊",
+    "보": "✋"
+}
 
-    resize();
+def play(player):
+    computer = random.choice(["가위", "바위", "보"])
 
-    const colors = [
-        "#ff004c", "#ffcc00", "#00ffff",
-        "#ff00ff", "#00ff66", "#ffffff",
-        "#ff8800", "#a855ff", "#ff77aa",
-        "#66aaff", "#fff4c2"
-    ];
+    st.session_state.player = choices[player]
+    st.session_state.computer = choices[computer]
 
-    // 반짝이는 별 생성
-    for (let i = 0; i < 120; i++) {
-        stars.push({
-            x: Math.random() * 1200,
-            y: Math.random() * 720,
-            size: Math.random() * 2 + 0.5,
-            alpha: Math.random(),
-            speed: Math.random() * 0.035 + 0.01
-        });
-    }
+    if player == computer:
+        st.session_state.result = "🤝 무승부!"
+        st.session_state.draw += 1
 
-    // 폭죽 발사
-    function launch(x, y) {
-        const color = colors[
-            Math.floor(Math.random() * colors.length)
-        ];
+    elif (
+        (player == "가위" and computer == "보") or
+        (player == "바위" and computer == "가위") or
+        (player == "보" and computer == "바위")
+    ):
+        st.session_state.result = "🎉 승리했습니다!"
+        st.session_state.win += 1
+        st.balloons()
 
-        rockets.push({
-            x: x,
-            y: H + 10,
-            targetY: y,
-            vx: (Math.random() - 0.5) * 2,
-            vy: -(Math.random() * 5 + 9),
-            color: color,
-            trail: []
-        });
-    }
+    else:
+        st.session_state.result = "😭 패배했습니다!"
+        st.session_state.lose += 1
 
-    // 화려한 폭발
-    function explode(x, y, color) {
+with col1:
+    if st.button("✌️ 가위"):
+        play("가위")
 
-        const count = 180;
+with col2:
+    if st.button("✊ 바위"):
+        play("바위")
 
-        for (let i = 0; i < count; i++) {
-            const angle = Math.random() * Math.PI * 2;
-            const speed = Math.random() * 8 + 1;
+with col3:
+    if st.button("✋ 보"):
+        play("보")
 
-            particles.push({
-                x: x,
-                y: y,
-                vx: Math.cos(angle) * speed,
-                vy: Math.sin(angle) * speed,
-                alpha: 1,
-                decay: Math.random() * 0.009 + 0.006,
-                color: Math.random() > 0.25
-                    ? color
-                    : colors[Math.floor(Math.random() * colors.length)],
-                size: Math.random() * 3.5 + 1,
-                gravity: 0.045,
-                twinkle: Math.random() > 0.5
-            });
-        }
+st.write("")
 
-        // 중심부의 반짝이는 작은 별
-        for (let i = 0; i < 35; i++) {
-            particles.push({
-                x: x,
-                y: y,
-                vx: (Math.random() - 0.5) * 13,
-                vy: (Math.random() - 0.5) * 13,
-                alpha: 1,
-                decay: 0.025,
-                color: "#ffffff",
-                size: Math.random() * 3 + 1,
-                gravity: 0.02,
-                twinkle: true
-            });
-        }
-    }
+st.markdown(
+    f"<div class='result'>{st.session_state.result}</div>",
+    unsafe_allow_html=True
+)
 
-    // 클릭한 위치에 폭죽 여러 개
-    canvas.addEventListener("click", (e) => {
-        const rect = canvas.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const y = e.clientY - rect.top;
-
-        launch(x, y);
-        launch(
-            Math.max(20, Math.min(W - 20, x + 100)),
-            Math.max(30, y - 100)
-        );
-        launch(
-            Math.max(20, Math.min(W - 20, x - 100)),
-            Math.max(30, y - 60)
-        );
-    });
-
-    // 최초 입장 시 대형 폭죽 쇼
-    let initialCount = 0;
-
-    const initialShow = setInterval(() => {
-        launch(
-            Math.random() * W,
-            Math.random() * H * 0.65 + 40
-        );
-
-        initialCount++;
-
-        if (initialCount >= 18) {
-            clearInterval(initialShow);
-        }
-    }, 220);
-
-    // 애니메이션
-    function animate() {
-
-        ctx.clearRect(0, 0, W, H);
-
-        // 별빛 반짝임
-        stars.forEach(s => {
-            s.alpha += s.speed;
-            if (s.alpha > 1 || s.alpha < 0) {
-                s.speed *= -1;
-            }
-
-            ctx.globalAlpha = Math.max(0, s.alpha);
-            ctx.fillStyle = "#ffffff";
-            ctx.shadowBlur = 8;
-            ctx.shadowColor = "#ffffff";
-
-            ctx.beginPath();
-            ctx.arc(s.x % W, s.y % H, s.size, 0, Math.PI * 2);
-            ctx.fill();
-        });
-
-        // 로켓 이동 및 폭발
-        rockets.forEach((r, index) => {
-            r.trail.push({x: r.x, y: r.y});
-
-            if (r.trail.length > 8) {
-                r.trail.shift();
-            }
-
-            r.x += r.vx;
-            r.y += r.vy;
-            r.vy += 0.13;
-
-            ctx.beginPath();
-            ctx.strokeStyle = r.color;
-            ctx.lineWidth = 3;
-            ctx.shadowBlur = 15;
-            ctx.shadowColor = r.color;
-
-            if (r.trail.length > 1) {
-                ctx.moveTo(r.trail[0].x, r.trail[0].y);
-
-                r.trail.forEach(t => {
-                    ctx.lineTo(t.x, t.y);
-                });
-
-                ctx.stroke();
-            }
-
-            if (r.y <= r.targetY || r.vy >= 0) {
-                explode(r.x, r.y, r.color);
-                rockets.splice(index, 1);
-            }
-        });
-
-        // 불꽃 입자와 반짝임
-        particles.forEach((p, index) => {
-
-            p.x += p.vx;
-            p.y += p.vy;
-
-            p.vx *= 0.985;
-            p.vy *= 0.985;
-            p.vy += p.gravity;
-
-            p.alpha -= p.decay;
-
-            ctx.globalAlpha = Math.max(0, p.alpha);
-
-            // 반짝이는 효과
-            const sparkle = p.twinkle
-                ? (Math.random() > 0.5 ? 1 : 0.4)
-                : 1;
-
-            ctx.fillStyle = p.color;
-            ctx.shadowBlur = 18;
-            ctx.shadowColor = p.color;
-
-            ctx.beginPath();
-            ctx.arc(
-                p.x, p.y,
-                Math.max(0.2, p.size * sparkle),
-                0, Math.PI * 2
-            );
-            ctx.fill();
-
-            if (p.alpha <= 0) {
-                particles.splice(index, 1);
-            }
-        });
-
-        ctx.globalAlpha = 1;
-        ctx.shadowBlur = 0;
-
-        requestAnimationFrame(animate);
-    }
-
-    animate();
-
-    // 창 크기 변경 대응
-    window.addEventListener("resize", resize);
-
-    </script>
-    """, height=730, scrolling=False)
-
-else:
-    st.markdown("""
-    <div class="welcome">
-        <p>💜 아래 버튼을 눌러 축제를 시작하세요! 💜</p>
-    </div>
-    """, unsafe_allow_html=True)
+# 다시 시작
+if st.button("🔄 게임 초기화"):
+    st.session_state.win = 0
+    st.session_state.lose = 0
+    st.session_state.draw = 0
+    st.session_state.player = "❔"
+    st.session_state.computer = "❔"
+    st.session_state.result = "새로운 게임을 시작하세요!"
+    st.rerun()
