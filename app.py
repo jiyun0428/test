@@ -1,496 +1,509 @@
 
 import streamlit as st
 import streamlit.components.v1 as components
-import random
 
 st.set_page_config(
-    page_title="가위바위보 대결",
-    page_icon="🥊",
+    page_title="THE LAST WARD",
+    page_icon="👻",
     layout="wide"
 )
 
-# -----------------------------
-# 세션 상태
-# -----------------------------
-defaults = {
-    "win": 0,
-    "lose": 0,
-    "draw": 0,
-    "player": "❔",
-    "computer": "❔",
-    "result": "대결을 시작하세요!",
-    "has_played": False,
-    "round": 0
-}
-
-for key, value in defaults.items():
-    if key not in st.session_state:
-        st.session_state[key] = value
-
-# -----------------------------
-# 디자인
-# -----------------------------
 st.markdown("""
 <style>
 .stApp {
-    background:
-        radial-gradient(circle at 50% 30%,
-        #421078 0%, #18002f 55%, #080015 100%);
+    background: #050507;
     color: white;
 }
-
-h1, h2, h3, p, label {
-    color: white;
+header, footer, #MainMenu {
+    visibility: hidden;
 }
-
-.game-title {
-    text-align: center;
-    font-size: 48px;
-    font-weight: 1000;
-    color: #ffe66d;
-    text-shadow: 0 0 20px #ff00ff;
-    padding: 15px;
-}
-
-div.stButton > button {
-    height: 90px;
-    width: 100%;
-    border-radius: 22px;
-    background: linear-gradient(135deg,#7b2cbf,#c77dff);
-    border: 2px solid #ffffff;
-    color: white;
-    font-size: 25px;
-    font-weight: bold;
-    box-shadow: 0 0 18px #b517ff;
-    transition: all .2s;
-}
-
-div.stButton > button:hover {
-    transform: scale(1.07);
-    background: linear-gradient(135deg,#ff006e,#8338ec);
-    color: white;
-    box-shadow: 0 0 35px #ff00ff;
+.block-container {
+    padding: 1rem;
+    max-width: 1400px;
 }
 </style>
 """, unsafe_allow_html=True)
 
 st.markdown("""
-<div class="game-title">
-    🥊 ROCK PAPER SCISSORS 🥊
-</div>
-<p style="text-align:center;font-size:20px;">
-    최고의 승부를 시작하세요!
+<h1 style="text-align:center;color:#b90020;
+letter-spacing:8px;text-shadow:0 0 20px red">
+THE LAST WARD
+</h1>
+<p style="text-align:center;color:#aaa">
+마지막 병동 · HORROR SURVIVAL
 </p>
 """, unsafe_allow_html=True)
 
-# -----------------------------
-# 점수판
-# -----------------------------
-a, b, c = st.columns(3)
+game = r"""
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+* {box-sizing:border-box}
+body {
+ margin:0;
+ background:#050507;
+ color:white;
+ font-family:Arial;
+ overflow:hidden;
+}
+#wrap {
+ position:relative;
+ width:100%;
+ height:620px;
+ background:#000;
+ overflow:hidden;
+ border:1px solid #79101b;
+}
+canvas {
+ width:100%;
+ height:100%;
+ display:block;
+ cursor:crosshair;
+}
+#hud {
+ position:absolute;
+ inset:0;
+ pointer-events:none;
+ padding:15px;
+}
+#top {
+ display:flex;
+ justify-content:space-between;
+ font-size:13px;
+}
+.stat {
+ background:#000b;
+ border:1px solid #722;
+ padding:10px;
+}
+#message {
+ position:absolute;
+ bottom:25px;
+ left:50%;
+ transform:translateX(-50%);
+ background:#000c;
+ padding:12px 20px;
+ text-align:center;
+}
+#overlay {
+ position:absolute;
+ inset:0;
+ background:#050507ee;
+ display:flex;
+ align-items:center;
+ justify-content:center;
+ text-align:center;
+ z-index:5;
+}
+.panel {
+ max-width:500px;
+ padding:20px;
+}
+.panel h1 {
+ color:#d00027;
+ letter-spacing:5px;
+ text-shadow:0 0 20px red;
+}
+button {
+ background:#570011;
+ color:white;
+ border:1px solid red;
+ padding:15px 30px;
+ font-size:18px;
+ cursor:pointer;
+}
+#scare {
+ display:none;
+ position:absolute;
+ inset:0;
+ z-index:4;
+ align-items:center;
+ justify-content:center;
+ font-size:150px;
+ background:#6005;
+ text-shadow:0 0 30px red;
+}
+</style>
+</head>
+<body>
 
-a.metric("🏆 승리", st.session_state.win)
-b.metric("💀 패배", st.session_state.lose)
-c.metric("🤝 무승부", st.session_state.draw)
+<div id="wrap">
+<canvas id="screen"></canvas>
 
-st.divider()
+<div id="hud">
+ <div id="top">
+  <div class="stat">
+   ❤️ 체력 <span id="health">100</span>%
+  </div>
+  <div class="stat">
+   🔦 배터리 <span id="battery">100</span>%
+  </div>
+  <div class="stat" id="objective">열쇠 찾기</div>
+ </div>
+ <div id="message">주변을 살펴보세요...</div>
+</div>
 
-# -----------------------------
-# 대결 함수
-# -----------------------------
-choices = {
-    "가위": "✌️",
-    "바위": "✊",
-    "보": "✋"
+<div id="scare">👹</div>
+
+<div id="overlay">
+ <div class="panel">
+  <h1>THE LAST WARD</h1>
+  <h2>마지막 병동</h2>
+  <p>
+   새벽 3시 17분.<br>
+   당신은 버려진 병원에서 깨어났다.<br>
+   출구는 잠겨 있고 누군가 당신을 지켜보고 있다.
+  </p>
+  <p style="color:#ff4444">
+   ⚠️ 어둠 속에 오래 머물지 마세요.
+  </p>
+  <button id="start">게임 시작</button>
+ </div>
+</div>
+</div>
+
+<script>
+const canvas=document.getElementById("screen");
+const ctx=canvas.getContext("2d");
+const wrap=document.getElementById("wrap");
+
+let W=800,H=620;
+
+function resize(){
+ W=wrap.clientWidth;
+ H=wrap.clientHeight;
+ canvas.width=W;
+ canvas.height=H;
+}
+resize();
+window.addEventListener("resize",resize);
+
+const map=[
+"############",
+"#..........#",
+"#.##..#....#",
+"#......#...#",
+"#.##...#...#",
+"#......#...#",
+"###.##.....#",
+"#..........#",
+"#.####..##.#",
+"#..........#",
+"#..........#",
+"############"
+];
+
+let p={
+ x:1.5,y:1.5,angle:0,
+ health:100,battery:100,
+ flashlight:true,hasKey:false
+};
+
+let key={x:9.5,y:9.5,found:false};
+let door={x:6.5,y:10.5};
+
+let monster={
+ x:9.5,y:2.5,active:false
+};
+
+let started=false,dead=false,won=false;
+let last=performance.now();
+let fear=0,shake=0;
+const pressed={};
+
+function wall(x,y){
+ let a=Math.floor(x),b=Math.floor(y);
+ return !map[b]||map[b][a]!=="." ;
 }
 
-def play(player):
-
-    computer = random.choice(["가위", "바위", "보"])
-
-    st.session_state.player = choices[player]
-    st.session_state.computer = choices[computer]
-
-    if player == computer:
-        st.session_state.result = "🤝 DRAW!"
-        st.session_state.draw += 1
-
-    elif (
-        (player == "가위" and computer == "보") or
-        (player == "바위" and computer == "가위") or
-        (player == "보" and computer == "바위")
-    ):
-        st.session_state.result = "🏆 YOU WIN!"
-        st.session_state.win += 1
-
-    else:
-        st.session_state.result = "💀 YOU LOSE!"
-        st.session_state.lose += 1
-
-    st.session_state.has_played = True
-    st.session_state.round += 1
-
-# -----------------------------
-# 대결 버튼
-# -----------------------------
-st.markdown(
-    "<h2 style='text-align:center;'>👇 무엇을 낼까요?</h2>",
-    unsafe_allow_html=True
-)
-
-col1, col2, col3 = st.columns(3)
-
-with col1:
-    if st.button("✌️ 가위"):
-        play("가위")
-        st.rerun()
-
-with col2:
-    if st.button("✊ 바위"):
-        play("바위")
-        st.rerun()
-
-with col3:
-    if st.button("✋ 보"):
-        play("보")
-        st.rerun()
-
-# -----------------------------
-# 애니메이션 경기장
-# -----------------------------
-if st.session_state.has_played:
-
-    player = st.session_state.player
-    computer = st.session_state.computer
-    result = st.session_state.result
-
-    if "WIN" in result:
-        result_color = "#ffe600"
-        result_class = "win"
-    elif "LOSE" in result:
-        result_color = "#ff3155"
-        result_class = "lose"
-    else:
-        result_color = "#65eaff"
-        result_class = "draw"
-
-    html = """
-    <!DOCTYPE html>
-    <html>
-    <head>
-    <style>
-    * { box-sizing: border-box; }
-
-    body {
-        margin: 0;
-        background: transparent;
-        font-family: Arial, sans-serif;
-        color: white;
-        overflow: hidden;
-    }
-
-    .arena {
-        height: 490px;
-        width: 100%;
-        position: relative;
-        overflow: hidden;
-        border-radius: 25px;
-        background:
-        radial-gradient(ellipse at center,
-        #542080 0%, #21063c 65%, #100020 100%);
-        border: 2px solid #bd70ff;
-        box-shadow: 0 0 30px #a020f0;
-    }
-
-    .arena.shake {
-        animation: cameraShake .5s ease-in-out;
-    }
-
-    @keyframes cameraShake {
-        0% { transform: translate(0,0) rotate(0); }
-        15% { transform: translate(-12px,7px) rotate(-1deg); }
-        30% { transform: translate(12px,-8px) rotate(1deg); }
-        45% { transform: translate(-10px,5px); }
-        60% { transform: translate(8px,-5px); }
-        75% { transform: translate(-5px,3px); }
-        100% { transform: translate(0,0); }
-    }
-
-    .heading {
-        text-align: center;
-        padding-top: 22px;
-        font-size: 22px;
-        font-weight: bold;
-        color: #ffdf80;
-    }
-
-    .fighters {
-        display: flex;
-        justify-content: space-around;
-        align-items: center;
-        height: 230px;
-    }
-
-    .fighter {
-        text-align: center;
-        width: 45%;
-    }
-
-    .name {
-        font-size: 19px;
-        color: #e5c7ff;
-        font-weight: bold;
-    }
-
-    .hand {
-        font-size: 90px;
-        display: inline-block;
-        filter: drop-shadow(0 0 15px #ffccff);
-        opacity: 0;
-    }
-
-    .left-hand.show {
-        animation: punchLeft .8s cubic-bezier(.2,.8,.3,1) forwards;
-    }
-
-    .right-hand.show {
-        animation: punchRight .8s cubic-bezier(.2,.8,.3,1) forwards;
-    }
-
-    @keyframes punchLeft {
-        0% { opacity:0; transform:translateX(-180px) scale(.2) rotate(-50deg); }
-        65% { opacity:1; transform:translateX(35px) scale(1.5) rotate(20deg); }
-        85% { transform:translateX(-10px) scale(1.1); }
-        100% { opacity:1; transform:translateX(0) scale(1); }
-    }
-
-    @keyframes punchRight {
-        0% { opacity:0; transform:translateX(180px) scale(.2) rotate(50deg); }
-        65% { opacity:1; transform:translateX(-35px) scale(1.5) rotate(-20deg); }
-        85% { transform:translateX(10px) scale(1.1); }
-        100% { opacity:1; transform:translateX(0) scale(1); }
-    }
-
-    .vs {
-        position: absolute;
-        left: 50%;
-        top: 48%;
-        transform: translate(-50%,-50%);
-        font-size: 35px;
-        font-weight: 1000;
-        color: #ffe600;
-        text-shadow: 0 0 20px #ff00ff;
-    }
-
-    .count {
-        position: absolute;
-        top: 43%;
-        left: 50%;
-        transform: translate(-50%,-50%);
-        font-size: 65px;
-        font-weight: 1000;
-        color: #ffffff;
-        text-shadow: 0 0 25px #ff00ff;
-        z-index: 10;
-    }
-
-    .result {
-        text-align: center;
-        font-size: 37px;
-        font-weight: 1000;
-        margin-top: 8px;
-        opacity: 0;
-    }
-
-    .result.show {
-        animation: resultPop .7s ease forwards;
-    }
-
-    @keyframes resultPop {
-        0% { opacity:0; transform:scale(.2) rotate(-10deg); }
-        70% { opacity:1; transform:scale(1.25) rotate(3deg); }
-        100% { opacity:1; transform:scale(1); }
-    }
-
-    .flash {
-        position: absolute;
-        inset: 0;
-        background: white;
-        opacity: 0;
-        pointer-events: none;
-        z-index: 20;
-    }
-
-    .flash.active {
-        animation: flash .35s ease;
-    }
-
-    @keyframes flash {
-        0% { opacity:0; }
-        25% { opacity:.8; }
-        100% { opacity:0; }
-    }
-
-    .particle {
-        position: absolute;
-        width: 7px;
-        height: 7px;
-        border-radius: 50%;
-        pointer-events: none;
-        animation: burst 1s ease-out forwards;
-    }
-
-    @keyframes burst {
-        from {
-            opacity:1;
-            transform:translate(0,0) scale(1);
-        }
-        to {
-            opacity:0;
-            transform:translate(var(--x),var(--y)) scale(0);
-        }
-    }
-
-    </style>
-    </head>
-
-    <body>
-    <div class="arena" id="arena">
-
-        <div class="heading">
-            ⚡ FINAL BATTLE ⚡
-        </div>
-
-        <div class="fighters">
-
-            <div class="fighter">
-                <div class="name">😎 YOU</div>
-                <div class="hand left-hand" id="player">PLAYER</div>
-            </div>
-
-            <div class="fighter">
-                <div class="name">🤖 COMPUTER</div>
-                <div class="hand right-hand" id="computer">COMPUTER</div>
-            </div>
-
-        </div>
-
-        <div class="vs">VS</div>
-
-        <div class="count" id="count">READY!</div>
-
-        <div class="flash" id="flash"></div>
-
-        <div class="result" id="result">RESULT</div>
-
-    </div>
-
-    <script>
-    const arena = document.getElementById("arena");
-    const count = document.getElementById("count");
-    const player = document.getElementById("player");
-    const computer = document.getElementById("computer");
-    const result = document.getElementById("result");
-    const flash = document.getElementById("flash");
-
-    const playerEmoji = "PLAYER_EMOJI";
-    const computerEmoji = "COMPUTER_EMOJI";
-    const resultText = "RESULT_TEXT";
-    const resultColor = "RESULT_COLOR";
-
-    function burst() {
-        for (let i = 0; i < 55; i++) {
-            const p = document.createElement("div");
-            p.className = "particle";
-
-            p.style.left = "50%";
-            p.style.top = "48%";
-            p.style.background =
-                ["#fff000","#ff00cc","#00ffff","#ffffff"]
-                [Math.floor(Math.random()*4)];
-
-            p.style.boxShadow = "0 0 12px " + p.style.background;
-            p.style.setProperty("--x",
-                (Math.random()*400-200)+"px");
-            p.style.setProperty("--y",
-                (Math.random()*300-150)+"px");
-
-            arena.appendChild(p);
-            setTimeout(() => p.remove(), 1100);
-        }
-    }
-
-    // 카운트다운과 손 내기
-    async function battle() {
-
-        for (const n of ["3", "2", "1", "가위! 바위! 보!"]) {
-            count.textContent = n;
-            count.animate([
-                {transform:"translate(-50%,-50%) scale(.3)",opacity:0},
-                {transform:"translate(-50%,-50%) scale(1.3)",opacity:1},
-                {transform:"translate(-50%,-50%) scale(1)",opacity:1}
-            ], {duration:380, fill:"forwards"});
-
-            await new Promise(r => setTimeout(r, 650));
-        }
-
-        count.style.display = "none";
-
-        player.textContent = playerEmoji;
-        computer.textContent = computerEmoji;
-
-        player.classList.add("show");
-        computer.classList.add("show");
-
-        setTimeout(() => {
-            arena.classList.add("shake");
-            flash.classList.add("active");
-            burst();
-        }, 400);
-
-        setTimeout(() => {
-            result.textContent = resultText;
-            result.style.color = resultColor;
-            result.classList.add("show");
-        }, 1100);
-    }
-
-    battle();
-    </script>
-    </body>
-    </html>
-    """
-
-    html = html.replace("PLAYER_EMOJI", player)
-    html = html.replace("COMPUTER_EMOJI", computer)
-    html = html.replace("RESULT_TEXT", result)
-    html = html.replace("RESULT_COLOR", result_color)
-
-    components.html(
-        html,
-        height=510,
-        scrolling=False
-    )
-
-else:
-    st.markdown("""
-    <div style="
-        text-align:center;
-        padding:60px 10px;
-        font-size:28px;
-        color:#e5c7ff;">
-        🥊<br><br>
-        버튼을 누르면 대결이 시작됩니다!
-        <br><br>
-        READY? FIGHT!
-    </div>
-    """, unsafe_allow_html=True)
-
-# -----------------------------
-# 초기화
-# -----------------------------
-st.write("")
-
-if st.button("🔄 점수 및 게임 초기화"):
-    for key, value in defaults.items():
-        st.session_state[key] = value
-    st.rerun()
+function dist(x,y,a,b){
+ return Math.hypot(x-a,y-b);
+}
+
+function say(t){
+ document.getElementById("message").textContent=t;
+}
+
+document.getElementById("start").onclick=()=>{
+ started=true;
+ document.getElementById("overlay").style.display="none";
+ canvas.requestPointerLock?.();
+ say("WASD로 이동하고 열쇠를 찾으세요.");
+ last=performance.now();
+ requestAnimationFrame(loop);
+};
+
+canvas.addEventListener("click",()=>{
+ if(started&&!dead&&!won)
+  canvas.requestPointerLock?.();
+});
+
+document.addEventListener("mousemove",e=>{
+ if(document.pointerLockElement===canvas)
+  p.angle+=e.movementX*.0025;
+});
+
+document.addEventListener("keydown",e=>{
+ pressed[e.code]=true;
+
+ if(e.code==="KeyF"){
+  p.flashlight=!p.flashlight;
+  say(p.flashlight?"손전등 ON":"손전등 OFF");
+ }
+
+ if(e.code==="KeyE") interact();
+});
+
+document.addEventListener("keyup",e=>{
+ pressed[e.code]=false;
+});
+
+function move(dx,dy){
+ if(!wall(p.x+dx,p.y))p.x+=dx;
+ if(!wall(p.x,p.y+dy))p.y+=dy;
+}
+
+function interact(){
+ if(!key.found&&dist(p.x,p.y,key.x,key.y)<1.5){
+  key.found=true;
+  p.hasKey=true;
+  monster.active=true;
+  say("열쇠를 획득했다! 무언가 깨어났다!");
+  shake=15;
+  return;
+ }
+
+ if(dist(p.x,p.y,door.x,door.y)<1.5){
+  if(p.hasKey){
+   won=true;
+   ending("탈출 성공","당신은 병원을 탈출했다...");
+  }else{
+   say("문이 잠겨 있다. 열쇠가 필요하다.");
+  }
+  return;
+ }
+
+ say("아무것도 없다.");
+}
+
+function ending(title,desc){
+ document.exitPointerLock?.();
+ let o=document.getElementById("overlay");
+ o.style.display="flex";
+ o.innerHTML=`
+ <div class="panel">
+ <h1>${title}</h1>
+ <p>${desc}</p>
+ <button onclick="location.reload()">다시 시작</button>
+ </div>`;
+}
+
+function scare(){
+ let el=document.getElementById("scare");
+ el.style.display="flex";
+ shake=25;
+ setTimeout(()=>el.style.display="none",700);
+}
+
+function updateMonster(dt){
+ if(!monster.active)return;
+
+ let d=dist(p.x,p.y,monster.x,monster.y);
+
+ if(d>.7){
+  let dx=(p.x-monster.x)/d;
+  let dy=(p.y-monster.y)/d;
+  let speed=.6*dt;
+  if(!wall(monster.x+dx*speed,monster.y))
+   monster.x+=dx*speed;
+  if(!wall(monster.x,monster.y+dy*speed))
+   monster.y+=dy*speed;
+ }
+
+ fear=d<4?Math.min(100,fear+dt*20):
+ Math.max(0,fear-dt*8);
+
+ if(d<1.1){
+  p.health-=dt*35;
+  if(Math.random()<dt*2)scare();
+ }
+
+ if(p.health<=0){
+  dead=true;
+  ending("GAME OVER","괴물에게 붙잡혔다.");
+ }
+}
+
+function render(){
+ ctx.fillStyle="#09080d";
+ ctx.fillRect(0,0,W,H/2);
+
+ let floor=ctx.createLinearGradient(0,H/2,0,H);
+ floor.addColorStop(0,"#28222b");
+ floor.addColorStop(1,"#050507");
+ ctx.fillStyle=floor;
+ ctx.fillRect(0,H/2,W,H/2);
+
+ const rays=240;
+ let z=[];
+
+ for(let i=0;i<rays;i++){
+  let camera=(i/rays-.5)*1.15;
+  let angle=p.angle+camera;
+  let dx=Math.cos(angle),dy=Math.sin(angle);
+  let d=0,x,y,hit=false;
+
+  while(d<15&&!hit){
+   d+=.025;
+   x=p.x+dx*d;
+   y=p.y+dy*d;
+   if(wall(x,y))hit=true;
+  }
+
+  d*=Math.cos(camera);
+  z[i]=d;
+
+  let height=Math.min(H*2,H/(d||.1)*.78);
+  let top=H/2-height/2;
+  let light=p.flashlight?
+   Math.max(.12,1-d/10)*Math.max(.15,1-Math.abs(camera)*1.5):
+   .12;
+
+  let red=Math.floor(45*light);
+  let green=Math.floor(45*light);
+  let blue=Math.floor(53*light);
+
+  ctx.fillStyle=`rgb(${red},${green},${blue})`;
+  ctx.fillRect(i*W/rays,top,W/rays+1,height);
+ }
+
+ function sprite(x,y,emoji,size,color){
+  let dx=x-p.x,dy=y-p.y;
+  let d=Math.hypot(dx,dy);
+  let a=Math.atan2(dy,dx)-p.angle;
+  while(a>Math.PI)a-=Math.PI*2;
+  while(a< -Math.PI)a+=Math.PI*2;
+  if(Math.abs(a)>.8||d<.1)return;
+
+  let sx=W/2+Math.tan(a)*W*.82;
+  let h=Math.min(H*1.5,H/d*.75*size);
+  let col=Math.floor(sx/W*rays);
+  if(col>=0&&col<rays&&d>z[col]+.1)return;
+
+  ctx.save();
+  ctx.textAlign="center";
+  ctx.font=h+"px serif";
+  ctx.shadowBlur=25;
+  ctx.shadowColor=color;
+  ctx.fillText(emoji,sx,H/2+h*.35);
+  ctx.restore();
+ }
+
+ if(!key.found)sprite(key.x,key.y,"🔑",.5,"gold");
+ sprite(door.x,door.y,"🚪",.7,"red");
+
+ if(monster.active)
+  sprite(monster.x,monster.y,"👹",1.2,"red");
+
+ // 손전등 조명
+ if(p.flashlight){
+  let g=ctx.createRadialGradient(
+   W/2,H/2,20,W/2,H/2,W*.55
+  );
+  g.addColorStop(0,"transparent");
+  g.addColorStop(1,"rgba(0,0,0,.8)");
+  ctx.fillStyle=g;
+  ctx.fillRect(0,0,W,H);
+ }else{
+  ctx.fillStyle="rgba(0,0,0,.8)";
+  ctx.fillRect(0,0,W,H);
+ }
+
+ if(fear>0){
+  ctx.fillStyle=`rgba(130,0,0,${fear/500})`;
+  ctx.fillRect(0,0,W,H);
+ }
+}
+
+function loop(now){
+ if(!started||dead||won)return;
+
+ let dt=Math.min((now-last)/1000,.05);
+ last=now;
+
+ let speed=(pressed.ShiftLeft?2.8:1.7)*dt;
+ let f=0,s=0;
+
+ if(pressed.KeyW)f++;
+ if(pressed.KeyS)f--;
+ if(pressed.KeyA)s--;
+ if(pressed.KeyD)s++;
+
+ if(pressed.ArrowLeft)p.angle-=dt*1.8;
+ if(pressed.ArrowRight)p.angle+=dt*1.8;
+
+ let len=Math.hypot(f,s)||1;
+ f/=len;s/=len;
+
+ move(
+  (Math.cos(p.angle)*f+
+   Math.cos(p.angle+Math.PI/2)*s)*speed,
+  (Math.sin(p.angle)*f+
+   Math.sin(p.angle+Math.PI/2)*s)*speed
+ );
+
+ if(p.flashlight){
+  p.battery=Math.max(0,p.battery-dt*.5);
+  if(p.battery===0){
+   p.flashlight=false;
+   say("손전등 배터리가 방전되었다!");
+  }
+ }else{
+  p.battery=Math.min(100,p.battery+dt*.1);
+ }
+
+ updateMonster(dt);
+
+ ctx.save();
+ if(shake>0){
+  ctx.translate(
+   (Math.random()-.5)*shake,
+   (Math.random()-.5)*shake
+  );
+  shake=Math.max(0,shake-.5);
+ }
+
+ render();
+ ctx.restore();
+
+ document.getElementById("health").textContent=
+  Math.floor(p.health);
+ document.getElementById("battery").textContent=
+  Math.floor(p.battery);
+ document.getElementById("objective").textContent=
+  p.hasKey?"출구로 이동":"열쇠 찾기";
+
+ requestAnimationFrame(loop);
+}
+
+// 초기 화면
+ctx.fillStyle="#080609";
+ctx.fillRect(0,0,W,H);
+ctx.fillStyle="#9c1528";
+ctx.textAlign="center";
+ctx.font="bold 24px Arial";
+ctx.fillText("ABANDONED HOSPITAL",W/2,H/2);
+
+</script>
+</body>
+</html>
+"""
+
+components.html(game, height=660, scrolling=False)
+
+st.markdown("""
+<p style="text-align:center;color:#777">
+WASD 이동 · 마우스 시점 · SHIFT 달리기 · F 손전등 · E 상호작용
+</p>
+""", unsafe_allow_html=True)
